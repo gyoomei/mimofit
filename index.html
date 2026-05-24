@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiMoFit — AI Fitness Planner & Calorie Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06080f;--panel:#0d0d1a;--panel2:#141422;--panel3:#1a1a2e;
+  --text:#f0f0f5;--muted:#7a7a90;--dim:#4a4a60;
+  --acc:#ff6b35;--acc2:#ff3d0a;--good:#00d68f;--warn:#ffb800;--bad:#ff4d6d;
+  --grad:linear-gradient(135deg,#ff6b35,#ff3d0a,#8b5cf6,#3b82f6);
+  --grad2:linear-gradient(135deg,#ff6b35,#8b5cf6);
+  --glass:rgba(13,13,26,.72);--glass2:rgba(20,20,34,.5);
+  --line:rgba(255,255,255,.06);--line2:rgba(255,255,255,.12);
+  --radius:14px;--radius-sm:8px;--radius-xs:6px;
+  --shadow:0 8px 32px rgba(0,0,0,.4);
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+[data-theme="light"]{
+  --bg:#faf9f7;--panel:#ffffff;--panel2:#f5f3ef;--panel3:#edeae4;
+  --text:#0a0a14;--muted:#5a5a70;--dim:#8a8aa0;
+  --acc:#d44a0a;--acc2:#b83500;
+  --grad:linear-gradient(135deg,#d44a0a,#b83500,#6d28d9,#1d4ed8);
+  --grad2:linear-gradient(135deg,#d44a0a,#6d28d9);
+  --glass:rgba(255,255,255,.82);--glass2:rgba(255,255,255,.5);
+  --line:rgba(0,0,0,.06);--line2:rgba(0,0,0,.12);
+  --shadow:0 8px 32px rgba(0,0,0,.08);
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;overflow-x:hidden}
+a{color:var(--acc);text-decoration:none}
+
+.mesh-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.mesh-bg .blob{position:absolute;border-radius:50%;filter:blur(120px);opacity:.12;animation:drift 20s ease-in-out infinite}
+.mesh-bg .blob:nth-child(1){width:600px;height:600px;background:#ff6b35;top:-10%;left:-10%;animation-delay:0s}
+.mesh-bg .blob:nth-child(2){width:500px;height:500px;background:#8b5cf6;top:40%;right:-10%;animation-delay:-7s}
+.mesh-bg .blob:nth-child(3){width:450px;height:450px;background:#3b82f6;bottom:-10%;left:30%;animation-delay:-14s}
+@keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(30px,-40px) scale(1.05)}66%{transform:translate(-20px,30px) scale(.95)}}
+
+.grid-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:60px 60px;opacity:.3}
+
+.particles{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.particles span{position:absolute;bottom:-10px;width:3px;height:3px;border-radius:50%;animation:rise linear infinite;opacity:0}
+.particles span:nth-child(odd){background:var(--acc)}
+.particles span:nth-child(even){background:#8b5cf6}
+@keyframes rise{0%{transform:translateY(0) scale(1);opacity:0}10%{opacity:.6}90%{opacity:.2}100%{transform:translateY(-100vh) scale(0);opacity:0}}
+
+.wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 24px}
+nav{position:sticky;top:0;z-index:100;background:var(--glass);backdrop-filter:blur(20px) saturate(1.4);border-bottom:1px solid var(--line);padding:14px 0}
+nav .wrap{display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
+.logo .dot{width:10px;height:10px;border-radius:50%;background:var(--grad);flex-shrink:0}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-btn{background:var(--glass2);border:1px solid var(--line);color:var(--text);padding:8px 14px;border-radius:var(--radius-xs);cursor:pointer;font:inherit;font-size:13px;transition:all .2s}
+.nav-btn:hover{border-color:var(--acc);background:rgba(255,107,53,.1)}
+.nav-status{font-size:12px;color:var(--good);display:flex;align-items:center;gap:6px}
+.nav-status .pulse{width:6px;height:6px;border-radius:50%;background:var(--good);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.hero{text-align:center;padding:80px 0 60px}
+.eyebrow{font-family:var(--mono);font-size:13px;color:var(--acc);letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px}
+.hero h1{font-size:clamp(36px,6vw,64px);font-weight:900;line-height:1.05;margin-bottom:20px}
+.hero h1 .grad{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{font-size:18px;color:var(--muted);max-width:600px;margin:0 auto 32px}
+.pills{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.pill{font-size:12px;padding:6px 14px;border-radius:20px;background:var(--glass2);border:1px solid var(--line);color:var(--muted);font-family:var(--mono)}
+.pill b{color:var(--text);font-weight:600}
+
+section{padding:60px 0}
+.section-head{display:flex;align-items:center;gap:16px;margin-bottom:32px}
+.section-num{font-family:var(--mono);font-size:13px;color:var(--acc);background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.2);padding:4px 10px;border-radius:var(--radius-xs);flex-shrink:0}
+.section-head h2{font-size:28px;font-weight:800}
+
+.card{background:var(--glass);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:var(--radius);padding:28px;transition:all .3s;position:relative;overflow:hidden}
+.card:hover{border-color:var(--line2);transform:translateY(-2px);box-shadow:var(--shadow)}
+.card::before{content:'';position:absolute;inset:0;background:linear-gradient(110deg,transparent 38%,rgba(255,255,255,.02) 48%,transparent 58%);transform:translateX(-100%);transition:transform .6s}
+.card:hover::before{transform:translateX(100%)}
+
+.form-group{margin-bottom:20px}
+.form-label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em}
+.form-input,.form-select{width:100%;padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);color:var(--text);font:inherit;font-size:15px;transition:border-color .2s;outline:none}
+.form-input:focus,.form-select:focus{border-color:var(--acc)}
+.form-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%237a7a90' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:640px){.form-row{grid-template-columns:1fr}}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 28px;border-radius:var(--radius-sm);font:inherit;font-weight:600;font-size:15px;cursor:pointer;transition:all .2s;border:none}
+.btn-primary{background:var(--grad);color:#fff;box-shadow:0 4px 20px rgba(255,107,53,.3)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(255,107,53,.4)}
+.btn-secondary{background:var(--glass2);color:var(--text);border:1px solid var(--line)}
+.btn-secondary:hover{border-color:var(--acc)}
+.btn-loading{pointer-events:none;opacity:.7}
+
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+@media(max-width:768px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:20px;text-align:center;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad)}
+.stat-value{font-size:28px;font-weight:800;font-family:var(--mono);margin-bottom:4px}
+.stat-value.good{color:var(--good)}.stat-value.warn{color:var(--warn)}.stat-value.bad{color:var(--bad)}.stat-value.acc{color:var(--acc)}
+.stat-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+.gauge-wrap{display:flex;align-items:center;gap:24px;margin:24px 0;flex-wrap:wrap}
+.gauge-bar{flex:1;min-width:200px;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--bad) 0%,var(--warn) 35%,var(--good) 55%,var(--warn) 75%,var(--bad) 100%);position:relative}
+.gauge-marker{position:absolute;top:-4px;width:20px;height:20px;border-radius:50%;background:var(--text);border:3px solid var(--bg);transform:translateX(-50%);transition:left .5s ease;box-shadow:0 0 10px rgba(0,0,0,.5)}
+.gauge-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin-top:6px}
+.gauge-info{flex:0 0 auto}
+.gauge-info h3{font-size:36px;font-weight:900;font-family:var(--mono)}
+.gauge-info p{font-size:14px;color:var(--muted)}
+
+.macros-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}
+@media(max-width:640px){.macros-grid{grid-template-columns:1fr}}
+.macro-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:20px;text-align:center}
+.macro-icon{font-size:28px;margin-bottom:8px}
+.macro-value{font-size:24px;font-weight:800;font-family:var(--mono)}
+.macro-label{font-size:13px;color:var(--muted);margin-top:4px}
+.macro-bar{height:4px;border-radius:2px;background:var(--line);margin-top:10px;overflow:hidden}
+.macro-fill{height:100%;border-radius:2px;transition:width .8s ease}
+
+.upload-zone{border:2px dashed var(--line);border-radius:var(--radius);padding:48px;text-align:center;cursor:pointer;transition:all .3s;position:relative}
+.upload-zone:hover,.upload-zone.dragover{border-color:var(--acc);background:rgba(255,107,53,.05)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-zone .icon{font-size:48px;margin-bottom:16px}
+.upload-zone h3{font-size:18px;font-weight:700;margin-bottom:8px}
+.upload-zone p{font-size:14px;color:var(--muted)}
+.upload-preview{margin-top:20px;display:none}
+.upload-preview img{max-width:100%;max-height:300px;border-radius:var(--radius-sm);border:1px solid var(--line)}
+
+.workout-day{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:20px;margin-bottom:12px}
+.workout-day h4{font-size:16px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.workout-day h4 .badge{font-size:11px;padding:3px 8px;border-radius:4px;font-weight:600}
+.badge-push{background:rgba(255,107,53,.15);color:var(--acc)}
+.badge-pull{background:rgba(139,92,246,.15);color:#8b5cf6}
+.badge-legs{background:rgba(0,214,143,.15);color:var(--good)}
+.badge-cardio{background:rgba(255,184,0,.15);color:var(--warn)}
+.badge-rest{background:rgba(122,122,144,.15);color:var(--muted)}
+.badge-full{background:rgba(59,130,246,.15);color:#3b82f6}
+.exercise-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.exercise-row:last-child{border-bottom:none}
+.exercise-name{font-weight:600}
+.exercise-detail{color:var(--muted);font-family:var(--mono);font-size:13px}
+
+.progress-table{width:100%;border-collapse:collapse}
+.progress-table th{text-align:left;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:10px 12px;border-bottom:1px solid var(--line2)}
+.progress-table td{padding:12px;border-bottom:1px solid var(--line);font-size:14px}
+.progress-table tr:hover td{background:var(--glass2)}
+.progress-up{color:var(--good);font-weight:600}
+.progress-down{color:var(--bad);font-weight:600}
+.delete-btn{background:none;border:none;color:var(--bad);cursor:pointer;font-size:16px;padding:4px 8px;opacity:.5;transition:opacity .2s}
+.delete-btn:hover{opacity:1}
+
+.food-analysis{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius-sm);padding:20px;margin-top:16px}
+.food-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.food-item:last-child{border-bottom:none}
+.food-item-name{font-weight:600;font-size:15px}
+.food-item-cal{font-family:var(--mono);font-weight:700;color:var(--acc)}
+.food-total{display:flex;justify-content:space-between;align-items:center;padding:16px 0 0;margin-top:8px;border-top:2px solid var(--line2);font-size:18px;font-weight:800}
+.food-total .total-val{font-family:var(--mono);background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.food-tips{margin-top:16px;padding:16px;background:rgba(255,107,53,.06);border:1px solid rgba(255,107,53,.15);border-radius:var(--radius-sm);font-size:14px;color:var(--muted);line-height:1.7}
+.food-tips strong{color:var(--text)}
+
+.chat-fab{position:fixed;bottom:24px;right:24px;z-index:200;width:60px;height:60px;border-radius:50%;background:var(--grad);border:none;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 4px 20px rgba(255,107,53,.4);transition:all .3s;display:flex;align-items:center;justify-content:center}
+.chat-fab:hover{transform:scale(1.08);box-shadow:0 6px 28px rgba(255,107,53,.5)}
+.chat-fab .ring{position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--acc);animation:ring-pulse 2s ease-out infinite;opacity:0}
+@keyframes ring-pulse{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.5);opacity:0}}
+.chat-panel{position:fixed;bottom:100px;right:24px;z-index:200;width:400px;max-height:520px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);display:none;flex-direction:column;overflow:hidden}
+.chat-panel.open{display:flex}
+@media(max-width:480px){.chat-panel{right:12px;left:12px;width:auto;bottom:90px}}
+.chat-header{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.chat-header h3{font-size:15px;font-weight:700}
+.chat-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;padding:4px}
+.chat-messages{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px;min-height:200px;max-height:340px}
+.chat-msg{max-width:85%;padding:10px 14px;border-radius:12px;font-size:14px;line-height:1.5}
+.chat-msg.user{align-self:flex-end;background:var(--acc);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.bot{align-self:flex-start;background:var(--panel2);border:1px solid var(--line);border-bottom-left-radius:4px}
+.chat-msg.bot b{color:var(--acc)}
+.chat-input-wrap{padding:12px 16px;border-top:1px solid var(--line);display:flex;gap:8px}
+.chat-input{flex:1;padding:10px 14px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-sm);color:var(--text);font:inherit;font-size:14px;outline:none}
+.chat-input:focus{border-color:var(--acc)}
+.chat-send{background:var(--acc);border:none;color:#fff;width:40px;height:40px;border-radius:var(--radius-sm);cursor:pointer;font-size:16px;transition:background .2s}
+.chat-send:hover{background:var(--acc2)}
+.chat-typing{display:none;align-self:flex-start;font-size:13px;color:var(--muted);padding:4px 0}
+.chat-typing.show{display:block}
+.chat-suggestions{padding:8px 16px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--line)}
+.chat-suggest{font-size:12px;padding:5px 10px;border-radius:14px;background:var(--glass2);border:1px solid var(--line);color:var(--muted);cursor:pointer;transition:all .2s;white-space:nowrap}
+.chat-suggest:hover{border-color:var(--acc);color:var(--acc)}
+
+footer{border-top:1px solid var(--line);padding:40px 0;text-align:center;color:var(--dim);font-size:13px}
+footer a{color:var(--muted)}
+footer .brand{font-family:var(--mono);font-weight:700;background:var(--grad2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+@media(prefers-reduced-motion:reduce){
+  .mesh-bg .blob,.particles span,.chat-fab .ring,.nav-status .pulse{animation:none!important}
+  .reveal{opacity:1;transform:none;transition:none}
+  .card::before{display:none}
+}
+
+@media(max-width:640px){
+  .hero{padding:50px 0 40px}
+  .hero h1{font-size:32px}
+  .hero p{font-size:15px}
+  .section-head h2{font-size:22px}
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .gauge-wrap{flex-direction:column;align-items:stretch}
+  .macros-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="mesh-bg"><div class="blob"></div><div class="blob"></div><div class="blob"></div></div>
+<div class="grid-overlay"></div>
+<div class="particles" id="particles"></div>
+
+<nav>
+  <div class="wrap">
+    <div class="logo"><span class="dot"></span>MiMoFit</div>
+    <div class="nav-right">
+      <span class="nav-status"><span class="pulse"></span> AI Ready</span>
+      <button class="nav-btn" onclick="toggleTheme()" id="themeBtn">☀️ Light</button>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="hero reveal">
+    <div class="eyebrow">Powered by Xiaomi MiMo V2.5</div>
+    <h1>Your <span class="grad">AI Fitness</span> Planner</h1>
+    <p>Calculate your ideal nutrition, analyze food photos, generate workout plans, and track progress — all powered by AI.</p>
+    <div class="pills">
+      <span class="pill"><b>BMI</b> Calculator</span>
+      <span class="pill"><b>TDEE</b> Engine</span>
+      <span class="pill"><b>Food</b> Analyzer</span>
+      <span class="pill"><b>Workout</b> Generator</span>
+      <span class="pill"><b>Progress</b> Tracker</span>
+      <span class="pill"><b>MiMo</b> AI Chat</span>
+    </div>
+  </div>
+
+  <section id="calculator" class="reveal">
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <h2>Body Calculator</h2>
+    </div>
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <select class="form-select" id="gender">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Age</label>
+          <input class="form-input" type="number" id="age" placeholder="25" min="10" max="100">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Height (cm)</label>
+          <input class="form-input" type="number" id="height" placeholder="175" min="100" max="250">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Weight (kg)</label>
+          <input class="form-input" type="number" id="weight" placeholder="70" min="30" max="300">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Activity Level</label>
+          <select class="form-select" id="activity">
+            <option value="1.2">Sedentary (little/no exercise)</option>
+            <option value="1.375">Light (1-3 days/week)</option>
+            <option value="1.55" selected>Moderate (3-5 days/week)</option>
+            <option value="1.725">Active (6-7 days/week)</option>
+            <option value="1.9">Very Active (2x/day or physical job)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Goal</label>
+          <select class="form-select" id="goal">
+            <option value="cut">Lose Fat (-20%)</option>
+            <option value="maintain" selected>Maintain Weight</option>
+            <option value="bulk">Build Muscle (+15%)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="calculateBody()" style="width:100%">⚡ Calculate</button>
+      <div id="bodyResults" style="display:none;margin-top:32px">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-value" id="resBmi">--</div><div class="stat-label">BMI</div></div>
+          <div class="stat-card"><div class="stat-value acc" id="resBmr">--</div><div class="stat-label">BMR (kcal)</div></div>
+          <div class="stat-card"><div class="stat-value" id="resTdee">--</div><div class="stat-label">TDEE (kcal)</div></div>
+          <div class="stat-card"><div class="stat-value" id="resTarget">--</div><div class="stat-label">Target (kcal)</div></div>
+        </div>
+        <div class="gauge-wrap">
+          <div style="flex:1;min-width:200px">
+            <div class="gauge-bar"><div class="gauge-marker" id="gaugeMarker" style="left:50%"></div></div>
+            <div class="gauge-labels"><span>16</span><span>18.5</span><span>25</span><span>30</span><span>40</span></div>
+          </div>
+          <div class="gauge-info">
+            <h3 id="gaugeValue">--</h3>
+            <p id="gaugeCategory">--</p>
+          </div>
+        </div>
+        <h3 style="font-size:18px;font-weight:700;margin-bottom:12px">Recommended Macros</h3>
+        <div class="macros-grid">
+          <div class="macro-card">
+            <div class="macro-icon">🥩</div>
+            <div class="macro-value" id="macroProtein">--</div>
+            <div class="macro-label">Protein (g)</div>
+            <div class="macro-bar"><div class="macro-fill" id="macroProteinBar" style="width:0;background:var(--acc)"></div></div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-icon">🥑</div>
+            <div class="macro-value" id="macroFat">--</div>
+            <div class="macro-label">Fat (g)</div>
+            <div class="macro-bar"><div class="macro-fill" id="macroFatBar" style="width:0;background:#8b5cf6"></div></div>
+          </div>
+          <div class="macro-card">
+            <div class="macro-icon">🍚</div>
+            <div class="macro-value" id="macroCarbs">--</div>
+            <div class="macro-label">Carbs (g)</div>
+            <div class="macro-bar"><div class="macro-fill" id="macroCarbsBar" style="width:0;background:var(--good)"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="food" class="reveal">
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <h2>Food Analyzer</h2>
+    </div>
+    <div class="card">
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" accept="image/*" id="foodInput" onchange="analyzeFood(event)">
+        <div class="icon">📸</div>
+        <h3>Upload Food Photo</h3>
+        <p>Take a photo of your meal and let MiMo estimate the calories</p>
+      </div>
+      <div class="upload-preview" id="foodPreview">
+        <img id="foodImg" alt="Food preview">
+      </div>
+      <div id="foodResults" style="display:none;margin-top:24px"></div>
+    </div>
+  </section>
+
+  <section id="workout" class="reveal">
+    <div class="section-head">
+      <span class="section-num">03</span>
+      <h2>Workout Generator</h2>
+    </div>
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fitness Goal</label>
+          <select class="form-select" id="workoutGoal">
+            <option value="muscle">Build Muscle (Hypertrophy)</option>
+            <option value="strength">Build Strength</option>
+            <option value="fat-loss">Fat Loss</option>
+            <option value="endurance">Endurance</option>
+            <option value="general">General Fitness</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Days per Week</label>
+          <select class="form-select" id="workoutDays">
+            <option value="3">3 days</option>
+            <option value="4" selected>4 days</option>
+            <option value="5">5 days</option>
+            <option value="6">6 days</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Experience Level</label>
+          <select class="form-select" id="workoutLevel">
+            <option value="beginner">Beginner (0-6 months)</option>
+            <option value="intermediate" selected>Intermediate (6-24 months)</option>
+            <option value="advanced">Advanced (2+ years)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Equipment</label>
+          <select class="form-select" id="workoutEquip">
+            <option value="full-gym">Full Gym</option>
+            <option value="home-basic">Home (Dumbbells + Bench)</option>
+            <option value="bodyweight">Bodyweight Only</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="generateWorkout()" style="width:100%">🏋️ Generate Plan</button>
+      <div id="workoutResults" style="display:none;margin-top:24px"></div>
+    </div>
+  </section>
+
+  <section id="progress" class="reveal">
+    <div class="section-head">
+      <span class="section-num">04</span>
+      <h2>Progress Tracker</h2>
+    </div>
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Exercise</label>
+          <select class="form-select" id="progExercise">
+            <option value="Bench Press">Bench Press</option>
+            <option value="Squat">Squat</option>
+            <option value="Deadlift">Deadlift</option>
+            <option value="Overhead Press">Overhead Press</option>
+            <option value="Barbell Row">Barbell Row</option>
+            <option value="Pull-ups">Pull-ups</option>
+            <option value="Bicep Curl">Bicep Curl</option>
+            <option value="Leg Press">Leg Press</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Weight (kg)</label>
+          <input class="form-input" type="number" id="progWeight" placeholder="60" step="0.5">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Sets × Reps</label>
+          <div style="display:flex;gap:8px">
+            <input class="form-input" type="number" id="progSets" placeholder="3" min="1" style="width:50%">
+            <input class="form-input" type="number" id="progReps" placeholder="10" min="1" style="width:50%">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input class="form-input" type="date" id="progDate">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="logProgress()" style="width:100%">📝 Log Entry</button>
+      <div id="progressTable" style="margin-top:24px"></div>
+    </div>
+  </section>
+</div>
+
+<button class="chat-fab" onclick="toggleChat()" id="chatFab">💬<span class="ring"></span></button>
+
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <h3>🧠 Chat with MiMo</h3>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-messages" id="chatMessages">
+    <div class="chat-msg bot">Hi! I'm MiMo, your AI fitness assistant. Ask me about nutrition, workouts, recovery, or supplements! 💪</div>
+  </div>
+  <div class="chat-suggestions">
+    <span class="chat-suggest" onclick="quickChat('Best protein sources for muscle gain?')">🥩 Protein sources</span>
+    <span class="chat-suggest" onclick="quickChat('How to break a weight loss plateau?')">📉 Plateau tips</span>
+    <span class="chat-suggest" onclick="quickChat('Pre-workout meal suggestions?')">🍌 Pre-workout</span>
+    <span class="chat-suggest" onclick="quickChat('How much sleep for muscle recovery?')">😴 Recovery</span>
+  </div>
+  <div class="chat-typing" id="chatTyping">MiMo is thinking...</div>
+  <div class="chat-input-wrap">
+    <input class="chat-input" id="chatInput" placeholder="Ask about fitness..." onkeydown="if(event.key===&quot;Enter&quot;)sendChat()">
+    <button class="chat-send" onclick="sendChat()">➤</button>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>Powered by <span class="brand">MiMoFit</span> · Built with 🧠 Xiaomi MiMo V2.5</p>
+    <p style="margin-top:8px"><a href="https://github.com/gyoomei/mimofit" target="_blank">GitHub</a> · Free · No API Key · Single HTML</p>
+  </div>
+</footer>
+
+<script src="app.js?v=1"></script>
+</body>
+</html>
